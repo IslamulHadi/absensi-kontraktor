@@ -41,9 +41,9 @@ class ClockInAttendanceRequest extends FormRequest
             }
 
             $locationId = (int) $this->input('attendance_location_id');
-            [$resolved] = $user->employee->resolveMobileAttendanceLocationPair();
+            [$availableLocations] = $user->employee->resolveMobileAttendanceLocations();
 
-            if ($resolved === null) {
+            if ($availableLocations === []) {
                 $validator->errors()->add(
                     'attendance_location_id',
                     'Tidak ada lokasi absensi yang tersedia. Hubungi admin untuk menetapkan lokasi atau mengatur lokasi default.'
@@ -52,10 +52,11 @@ class ClockInAttendanceRequest extends FormRequest
                 return;
             }
 
-            if ($resolved->id !== $locationId) {
+            $allowedLocationIds = collect($availableLocations)->pluck('id')->all();
+            if (! in_array($locationId, $allowedLocationIds, true)) {
                 $validator->errors()->add(
                     'attendance_location_id',
-                    'Lokasi absensi tidak valid. Anda hanya dapat absen di satu lokasi yang ditetapkan.'
+                    'Lokasi absensi tidak valid. Pilih salah satu lokasi absensi yang ditetapkan untuk akun Anda.'
                 );
             }
         });

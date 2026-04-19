@@ -11,6 +11,18 @@ use Filament\Schemas\Schema;
 
 class AttendanceLocationForm
 {
+    /**
+     * Normalisasi desimal (locale ID memakai koma) untuk validasi & penyimpanan.
+     */
+    private static function normalizeDecimalCoordinate(mixed $state): mixed
+    {
+        if ($state === null || $state === '') {
+            return $state;
+        }
+
+        return str_replace(',', '.', (string) $state);
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -40,15 +52,19 @@ class AttendanceLocationForm
                             ->label('Garis lintang')
                             ->required()
                             ->numeric()
-                            ->step(0.00000001)
                             ->default(AttendanceLocationMapPicker::DEFAULT_LAT)
+                            ->helperText('Gunakan titik sebagai desimal (contoh: -8.58154104). Pemisah koma dari papan ketik Indonesia akan dinormalisasi otomatis.')
+                            ->mutateStateForValidationUsing(fn (mixed $state): mixed => self::normalizeDecimalCoordinate($state))
+                            ->mutateDehydratedStateUsing(fn (mixed $state): mixed => self::normalizeDecimalCoordinate($state))
                             ->live(debounce: 400),
                         TextInput::make('longitude')
                             ->label('Garis bujur')
                             ->required()
                             ->numeric()
-                            ->step(0.00000001)
                             ->default(AttendanceLocationMapPicker::DEFAULT_LNG)
+                            ->helperText('Gunakan titik sebagai desimal. Pemisah koma akan dinormalisasi otomatis.')
+                            ->mutateStateForValidationUsing(fn (mixed $state): mixed => self::normalizeDecimalCoordinate($state))
+                            ->mutateDehydratedStateUsing(fn (mixed $state): mixed => self::normalizeDecimalCoordinate($state))
                             ->live(debounce: 400),
                         TextInput::make('radius_meters')
                             ->label('Radius izin (meter)')

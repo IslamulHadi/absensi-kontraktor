@@ -3,9 +3,9 @@
 namespace App\Filament\Resources\Employees\Schemas;
 
 use App\Models\Employee;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TextInput;
+use App\Models\User;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Contracts\HasSchemas;
@@ -34,17 +34,16 @@ class EmployeeForm
                             ->label('Telepon')
                             ->tel()
                             ->maxLength(32),
-                        TextInput::make('department')
-                            ->label('Departemen / proyek'),
-                        TextInput::make('position')
-                            ->label('Jabatan'),
                         Toggle::make('is_active')
                             ->label('Aktif')
                             ->default(true)
                             ->required(),
-                        DatePicker::make('hired_at')
-                            ->label('Tanggal mulai kerja')
-                            ->native(false),
+                        Toggle::make('is_attendance_strict')
+                            ->label('Mode absensi strict')
+                            ->helperText('Jika aktif: pegawai wajib berada di lokasi/radius absensi. Jika nonaktif: pegawai tetap memilih lokasi, tetapi boleh submit dari luar radius.')
+                            ->default(false)
+                            ->required()
+                            ->visible(fn (): bool => auth()->user() instanceof User && auth()->user()->isSuperAdmin()),
                         Textarea::make('notes')
                             ->label('Catatan')
                             ->columnSpanFull(),
@@ -57,7 +56,7 @@ class EmployeeForm
                             ->label('Username akun saat ini')
                             ->disabled()
                             ->dehydrated(false)
-                            ->visible(function (LivewireComponent & HasSchemas $livewire, string $operation): bool {
+                            ->visible(function (LivewireComponent&HasSchemas $livewire, string $operation): bool {
                                 if ($operation !== 'edit') {
                                     return false;
                                 }
@@ -73,7 +72,7 @@ class EmployeeForm
                             ->regex('/^[a-zA-Z0-9._-]+$/')
                             ->unique(table: 'users', column: 'username')
                             ->dehydrated(false)
-                            ->visible(function (LivewireComponent & HasSchemas $livewire, string $operation): bool {
+                            ->visible(function (LivewireComponent&HasSchemas $livewire, string $operation): bool {
                                 if ($operation === 'create') {
                                     return true;
                                 }
@@ -91,7 +90,7 @@ class EmployeeForm
                             ->rule(Password::defaults())
                             ->requiredWith('account_username')
                             ->dehydrated(false)
-                            ->visible(function (LivewireComponent & HasSchemas $livewire, string $operation): bool {
+                            ->visible(function (LivewireComponent&HasSchemas $livewire, string $operation): bool {
                                 if ($operation === 'create') {
                                     return true;
                                 }
@@ -109,7 +108,7 @@ class EmployeeForm
                             ->requiredWith('account_username')
                             ->same('account_password')
                             ->dehydrated(false)
-                            ->visible(function (LivewireComponent & HasSchemas $livewire, string $operation): bool {
+                            ->visible(function (LivewireComponent&HasSchemas $livewire, string $operation): bool {
                                 if ($operation === 'create') {
                                     return true;
                                 }
@@ -127,7 +126,7 @@ class EmployeeForm
                             ->revealable()
                             ->rules(['nullable', Password::defaults()])
                             ->dehydrated(false)
-                            ->visible(function (LivewireComponent & HasSchemas $livewire, string $operation): bool {
+                            ->visible(function (LivewireComponent&HasSchemas $livewire, string $operation): bool {
                                 if ($operation !== 'edit') {
                                     return false;
                                 }
@@ -142,7 +141,7 @@ class EmployeeForm
                             ->requiredWith('new_account_password')
                             ->same('new_account_password')
                             ->dehydrated(false)
-                            ->visible(function (LivewireComponent & HasSchemas $livewire, string $operation): bool {
+                            ->visible(function (LivewireComponent&HasSchemas $livewire, string $operation): bool {
                                 if ($operation !== 'edit') {
                                     return false;
                                 }

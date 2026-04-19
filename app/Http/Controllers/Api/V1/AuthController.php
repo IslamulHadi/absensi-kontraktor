@@ -68,9 +68,9 @@ class AuthController extends Controller
                 'id' => $employee->id,
                 'nik' => $employee->nik,
                 'full_name' => $employee->full_name,
-                'department' => $employee->department,
-                'position' => $employee->position,
                 'phone' => $employee->phone,
+                'is_attendance_strict' => $employee->is_attendance_strict,
+                'attendance_mode' => $employee->is_attendance_strict ? 'strict' : 'unstrict',
             ],
         ]);
     }
@@ -98,9 +98,9 @@ class AuthController extends Controller
                 'id' => $user->employee->id,
                 'nik' => $user->employee->nik,
                 'full_name' => $user->employee->full_name,
-                'department' => $user->employee->department,
-                'position' => $user->employee->position,
                 'phone' => $user->employee->phone,
+                'is_attendance_strict' => $user->employee->is_attendance_strict,
+                'attendance_mode' => $user->employee->is_attendance_strict ? 'strict' : 'unstrict',
             ] : null,
         ]);
     }

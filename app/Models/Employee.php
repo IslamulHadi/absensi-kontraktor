@@ -17,6 +17,13 @@ class Employee extends Model
     /** @use HasFactory<EmployeeFactory> */
     use HasFactory;
 
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_attendance_strict' => false,
+    ];
+
     protected static function booted(): void
     {
         static::deleting(function (Employee $employee): void {
@@ -34,10 +41,8 @@ class Employee extends Model
         'nik',
         'full_name',
         'phone',
-        'department',
-        'position',
         'is_active',
-        'hired_at',
+        'is_attendance_strict',
         'notes',
     ];
 
@@ -48,7 +53,7 @@ class Employee extends Model
     {
         return [
             'is_active' => 'boolean',
-            'hired_at' => 'date',
+            'is_attendance_strict' => 'boolean',
         ];
     }
 
@@ -66,32 +71,22 @@ class Employee extends Model
     public function attendanceLocations(): BelongsToMany
     {
         return $this->belongsToMany(AttendanceLocation::class)
-            ->withPivot('is_primary')
             ->withTimestamps();
     }
 
     /**
-     * Satu lokasi untuk aplikasi mobile: penugasan yang ditandai utama (pivot is_primary),
-     * atau penugasan pertama jika belum ada yang utama, atau lokasi default perusahaan.
-     *
-     * @return array{0: AttendanceLocation|null, 1: bool} Lokasi, lalu true jika memakai fallback default.
+     * @return array{0: list<AttendanceLocation>, 1: bool} Daftar lokasi, lalu true jika memakai fallback default.
      */
-    public function resolveMobileAttendanceLocationPair(): array
+    public function resolveMobileAttendanceLocations(): array
     {
         $assigned = $this->attendanceLocations()
             ->where('attendance_locations.is_active', true)
-            ->wherePivot('is_primary', true)
             ->orderBy('attendance_locations.name')
-            ->first();
+            ->get()
+            ->values()
+            ->all();
 
-        if ($assigned === null) {
-            $assigned = $this->attendanceLocations()
-                ->where('attendance_locations.is_active', true)
-                ->orderBy('attendance_locations.name')
-                ->first();
-        }
-
-        if ($assigned !== null) {
+        if ($assigned !== []) {
             return [$assigned, false];
         }
 
@@ -101,7 +96,11 @@ class Employee extends Model
             ->orderBy('id')
             ->first();
 
-        return [$default, $default !== null];
+        if ($default === null) {
+            return [[], false];
+        }
+
+        return [[$default], true];
     }
 
     /**

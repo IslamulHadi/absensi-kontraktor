@@ -8,12 +8,13 @@ use App\Filament\Resources\AttendanceLocations\Pages\ListAttendanceLocations;
 use App\Filament\Resources\AttendanceLocations\Schemas\AttendanceLocationForm;
 use App\Filament\Resources\AttendanceLocations\Tables\AttendanceLocationsTable;
 use App\Models\AttendanceLocation;
+use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
-use UnitEnum;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use UnitEnum;
 
 class AttendanceLocationResource extends Resource
 {
@@ -56,4 +57,31 @@ class AttendanceLocationResource extends Resource
             'edit' => EditAttendanceLocation::route('/{record}/edit'),
         ];
     }
+
+    // public static function canCreate(): bool
+    // {
+    //     return self::isCurrentUserSuperAdmin();
+    // }
+
+    // public static function canEdit(mixed $record): bool
+    // {
+    //     return self::isCurrentUserSuperAdmin();
+    // }
+
+    // public static function canDelete(mixed $record): bool
+    // {
+    //     return self::isCurrentUserSuperAdmin();
+    // }
+
+    // public static function canDeleteAny(): bool
+    // {
+    //     return self::isCurrentUserSuperAdmin();
+    // }
+
+    // private static function isCurrentUserSuperAdmin(): bool
+    // {
+    //     $user = auth()->user();
+
+    //     return $user instanceof User && $user->isSuperAdmin();
+    // }
 }

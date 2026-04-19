@@ -10,6 +10,7 @@ use App\Filament\Resources\Attendances\Schemas\AttendanceForm;
 use App\Filament\Resources\Attendances\Schemas\AttendanceInfolist;
 use App\Filament\Resources\Attendances\Tables\AttendancesTable;
 use App\Models\Attendance;
+use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -50,7 +51,7 @@ class AttendanceResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['employee', 'attendanceLocation', 'media']);
+            ->with(['employee', 'attendanceLocation', 'clockOutAttendanceLocation', 'media']);
     }
 
     public static function table(Table $table): Table
@@ -73,5 +74,32 @@ class AttendanceResource extends Resource
             'view' => ViewAttendance::route('/{record}'),
             'edit' => EditAttendance::route('/{record}/edit'),
         ];
+    }
+
+    public static function canCreate(): bool
+    {
+        return self::isCurrentUserSuperAdmin();
+    }
+
+    public static function canEdit(mixed $record): bool
+    {
+        return self::isCurrentUserSuperAdmin();
+    }
+
+    public static function canDelete(mixed $record): bool
+    {
+        return self::isCurrentUserSuperAdmin();
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return self::isCurrentUserSuperAdmin();
+    }
+
+    private static function isCurrentUserSuperAdmin(): bool
+    {
+        $user = auth()->user();
+
+        return $user instanceof User && $user->isSuperAdmin();
     }
 }

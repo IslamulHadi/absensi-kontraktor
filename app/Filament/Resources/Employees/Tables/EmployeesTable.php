@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\Tables;
 
+use App\Models\User;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -32,22 +33,14 @@ class EmployeesTable
                     ->label('Telepon')
                     ->searchable()
                     ->toggleable(),
-                TextColumn::make('department')
-                    ->label('Departemen')
-                    ->searchable()
-                    ->toggleable(),
-                TextColumn::make('position')
-                    ->label('Jabatan')
-                    ->searchable()
-                    ->toggleable(),
                 IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean(),
-                TextColumn::make('hired_at')
-                    ->label('Mulai kerja')
-                    ->date()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('is_attendance_strict')
+                    ->label('Mode strict')
+                    ->boolean()
+                    ->tooltip('Strict: wajib di radius. Unstrict: bisa submit di luar radius.')
+                    ->visible(fn (): bool => auth()->user() instanceof User && auth()->user()->isSuperAdmin()),
                 TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime()
@@ -59,11 +52,13 @@ class EmployeesTable
                     ->label('Status aktif'),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn (): bool => auth()->user() instanceof User && auth()->user()->isSuperAdmin()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => auth()->user() instanceof User && auth()->user()->isSuperAdmin()),
                 ]),
             ]);
     }

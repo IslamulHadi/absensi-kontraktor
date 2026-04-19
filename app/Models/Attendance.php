@@ -25,6 +25,7 @@ class Attendance extends Model implements HasMedia
     protected $fillable = [
         'employee_id',
         'attendance_location_id',
+        'clock_out_attendance_location_id',
         'work_date',
         'clock_in_at',
         'clock_out_at',
@@ -82,5 +83,13 @@ class Attendance extends Model implements HasMedia
     public function attendanceLocation(): BelongsTo
     {
         return $this->belongsTo(AttendanceLocation::class);
+    }
+
+    /**
+     * @return BelongsTo<AttendanceLocation, $this>
+     */
+    public function clockOutAttendanceLocation(): BelongsTo
+    {
+        return $this->belongsTo(AttendanceLocation::class, 'clock_out_attendance_location_id');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Attendances\Tables;
 use App\Enums\AttendanceDayStatus;
 use App\Filament\Exports\AttendanceExporter;
 use App\Models\Attendance;
+use App\Models\User;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -130,11 +131,13 @@ class AttendancesTable
             ])
             ->recordActions([
                 ViewAction::make(),
-                EditAction::make(),
+                EditAction::make()
+                    ->visible(fn (): bool => auth()->user() instanceof User && auth()->user()->isSuperAdmin()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->visible(fn (): bool => auth()->user() instanceof User && auth()->user()->isSuperAdmin()),
                 ]),
             ]);
     }

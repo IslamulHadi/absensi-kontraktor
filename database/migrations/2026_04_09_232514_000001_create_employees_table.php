@@ -17,10 +17,7 @@ return new class extends Migration
             $table->string('nik', 64)->unique();
             $table->string('full_name');
             $table->string('phone', 32)->nullable();
-            $table->string('department')->nullable();
-            $table->string('position')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->date('hired_at')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
         });

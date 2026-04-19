@@ -34,6 +34,7 @@ class AttendanceForm
 
                                 if ($employeeId === null) {
                                     $set('attendance_location_id', null);
+                                    $set('clock_out_attendance_location_id', null);
                                     $set('clock_in_latitude', null);
                                     $set('clock_in_longitude', null);
                                     $set('clock_out_latitude', null);
@@ -48,10 +49,12 @@ class AttendanceForm
                                     return;
                                 }
 
-                                [$location] = $employee->resolveMobileAttendanceLocationPair();
+                                [$locations] = $employee->resolveMobileAttendanceLocations();
+                                $location = $locations[0] ?? null;
 
                                 if ($location === null) {
                                     $set('attendance_location_id', null);
+                                    $set('clock_out_attendance_location_id', null);
                                     $set('clock_in_latitude', null);
                                     $set('clock_in_longitude', null);
                                     $set('clock_out_latitude', null);
@@ -61,16 +64,28 @@ class AttendanceForm
                                 }
 
                                 $set('attendance_location_id', $location->id);
+                                $set('clock_out_attendance_location_id', null);
                                 $set('clock_in_latitude', $location->latitude);
                                 $set('clock_in_longitude', $location->longitude);
                                 $set('clock_out_latitude', $location->latitude);
                                 $set('clock_out_longitude', $location->longitude);
                             }),
                         Select::make('attendance_location_id')
-                            ->label('Lokasi absensi')
-                            ->relationship('attendanceLocation', 'name')
+                            ->label('Lokasi masuk')
+                            ->relationship('attendanceLocation', 'name', fn ($query) => $query->where('is_active', true))
                             ->searchable()
                             ->preload(),
+                        Select::make('clock_out_attendance_location_id')
+                            ->label('Lokasi pulang')
+                            ->relationship(
+                                'clockOutAttendanceLocation',
+                                'name',
+                                fn ($query) => $query->where('is_active', true)
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->helperText('Kosongkan jika pulang di lokasi yang sama dengan masuk.'),
                         DatePicker::make('work_date')
                             ->label('Tanggal kerja')
                             ->required()

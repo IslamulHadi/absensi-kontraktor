@@ -20,15 +20,15 @@ class AttendanceInfolist
                     ->schema([
                         ImageEntry::make('clock_in_photo')
                             ->label('Foto masuk')
-                            ->state(fn (Attendance $record): ?string => self::photoPathRelativeToDisk($record, Attendance::MEDIA_CLOCK_IN))
-                            ->disk(fn (Attendance $record): string => self::photoDiskName($record, Attendance::MEDIA_CLOCK_IN))
+                            ->state(fn(Attendance $record): ?string => self::photoPathRelativeToDisk($record, Attendance::MEDIA_CLOCK_IN))
+                            ->disk(fn(Attendance $record): string => self::photoDiskName($record, Attendance::MEDIA_CLOCK_IN))
                             ->checkFileExistence(false)
                             ->imageHeight(220)
                             ->placeholder('Belum ada foto'),
                         ImageEntry::make('clock_out_photo')
                             ->label('Foto pulang')
-                            ->state(fn (Attendance $record): ?string => self::photoPathRelativeToDisk($record, Attendance::MEDIA_CLOCK_OUT))
-                            ->disk(fn (Attendance $record): string => self::photoDiskName($record, Attendance::MEDIA_CLOCK_OUT))
+                            ->state(fn(Attendance $record): ?string => self::photoPathRelativeToDisk($record, Attendance::MEDIA_CLOCK_OUT))
+                            ->disk(fn(Attendance $record): string => self::photoDiskName($record, Attendance::MEDIA_CLOCK_OUT))
                             ->checkFileExistence(false)
                             ->imageHeight(220)
                             ->placeholder('Belum ada foto'),
@@ -43,15 +43,6 @@ class AttendanceInfolist
                         TextEntry::make('work_date')
                             ->label('Tanggal kerja')
                             ->date(),
-                        TextEntry::make('clock_in_at')
-                            ->label('Jam masuk')
-                            ->dateTime(),
-                        TextEntry::make('clock_out_at')
-                            ->label('Jam pulang')
-                            ->dateTime(),
-                        TextEntry::make('attendanceLocation.name')
-                            ->label('Lokasi')
-                            ->placeholder('—'),
                         TextEntry::make('status')
                             ->label('Status')
                             ->formatStateUsing(function (AttendanceDayStatus|string $state): string {
@@ -61,6 +52,29 @@ class AttendanceInfolist
 
                                 return $enum->label();
                             }),
+                        TextEntry::make('clock_in_at')
+                            ->label('Jam masuk')
+                            ->dateTime(),
+                        TextEntry::make('clock_out_at')
+                            ->label('Jam pulang')
+                            ->dateTime(),
+                        TextEntry::make('attendanceLocation.name')
+                            ->label('Lokasi masuk')
+                            ->placeholder('—'),
+                        TextEntry::make('clock_out_location_summary')
+                            ->label('Lokasi pulang')
+                            ->state(function (Attendance $record): string {
+                                if ($record->clock_out_attendance_location_id !== null) {
+                                    return $record->clockOutAttendanceLocation?->name ?? '—';
+                                }
+
+                                if ($record->attendanceLocation !== null) {
+                                    return 'Sama dengan lokasi masuk';
+                                }
+
+                                return '—';
+                            }),
+
                     ])
                     ->columns(2),
             ]);

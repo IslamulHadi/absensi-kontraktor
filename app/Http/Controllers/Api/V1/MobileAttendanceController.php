@@ -20,16 +20,15 @@ class MobileAttendanceController extends Controller
     {
         $employee = $request->user()->employee;
 
-        [$location, $fromCompanyDefault] = $employee->resolveMobileAttendanceLocationPair();
-
-        if ($location === null) {
+        [$locations, $fromCompanyDefault] = $employee->resolveMobileAttendanceLocations();
+        if ($locations === []) {
             return response()->json(['data' => []]);
         }
 
         return response()->json([
-            'data' => [
-                $this->mobileLocationPayload($location, $fromCompanyDefault),
-            ],
+            'data' => collect($locations)
+                ->map(fn (AttendanceLocation $location): array => $this->mobileLocationPayload($location, $fromCompanyDefault))
+                ->all(),
         ]);
     }
 
@@ -39,7 +38,7 @@ class MobileAttendanceController extends Controller
 
         $paginator = Attendance::query()
             ->where('employee_id', $employee->id)
-            ->with(['attendanceLocation', 'media'])
+            ->with(['attendanceLocation', 'clockOutAttendanceLocation', 'media'])
             ->orderByDesc('work_date')
             ->orderByDesc('id')
             ->paginate(20);
@@ -56,7 +55,7 @@ class MobileAttendanceController extends Controller
         $attendance = Attendance::query()
             ->where('employee_id', $employee->id)
             ->whereDate('work_date', now()->startOfDay())
-            ->with(['attendanceLocation', 'media'])
+            ->with(['attendanceLocation', 'clockOutAttendanceLocation', 'media'])
             ->first();
 
         return response()->json([
@@ -75,7 +74,7 @@ class MobileAttendanceController extends Controller
             $dup = Attendance::query()
                 ->where('employee_id', $employee->id)
                 ->where('client_clock_in_request_id', $clientRequestId)
-                ->with(['attendanceLocation', 'media'])
+                ->with(['attendanceLocation', 'clockOutAttendanceLocation', 'media'])
                 ->first();
             if ($dup !== null) {
                 return response()->json([
@@ -99,7 +98,7 @@ class MobileAttendanceController extends Controller
             (float) $location->longitude,
         );
 
-        if ($distance > $location->radius_meters + 25) {
+        if ($employee->is_attendance_strict && $distance > $location->radius_meters + 25) {
             return response()->json([
                 'message' => 'Lokasi GPS di luar radius yang diizinkan.',
             ], 422);
@@ -120,8 +119,14 @@ class MobileAttendanceController extends Controller
         $attendance->work_date = $workDate;
         $attendance->attendance_location_id = $location->id;
         $attendance->clock_in_at = $recordedAt;
-        $attendance->clock_in_latitude = $request->validated('latitude');
-        $attendance->clock_in_longitude = $request->validated('longitude');
+        [$clockInLat, $clockInLon] = $this->resolvedStoredCoordinates(
+            $employee->is_attendance_strict,
+            $location,
+            (float) $request->validated('latitude'),
+            (float) $request->validated('longitude'),
+        );
+        $attendance->clock_in_latitude = $clockInLat;
+        $attendance->clock_in_longitude = $clockInLon;
         $attendance->status = AttendanceDayStatus::Incomplete;
         if (is_string($clientRequestId) && $clientRequestId !== '') {
             $attendance->client_clock_in_request_id = $clientRequestId;
@@ -131,7 +136,7 @@ class MobileAttendanceController extends Controller
         $attendance->clearMediaCollection(Attendance::MEDIA_CLOCK_IN);
         $attendance->addMediaFromRequest('photo')->toMediaCollection(Attendance::MEDIA_CLOCK_IN);
 
-        $attendance->load(['attendanceLocation', 'media']);
+        $attendance->load(['attendanceLocation', 'clockOutAttendanceLocation', 'media']);
 
         return response()->json([
             'message' => 'Absen masuk berhasil.',
@@ -150,7 +155,7 @@ class MobileAttendanceController extends Controller
             $dup = Attendance::query()
                 ->where('employee_id', $employee->id)
                 ->where('client_clock_out_request_id', $clientRequestId)
-                ->with(['attendanceLocation', 'media'])
+                ->with(['attendanceLocation', 'clockOutAttendanceLocation', 'media'])
                 ->first();
             if ($dup !== null) {
                 return response()->json([
@@ -166,7 +171,7 @@ class MobileAttendanceController extends Controller
             ->where('employee_id', $employee->id)
             ->whereNotNull('clock_in_at')
             ->whereNull('clock_out_at')
-            ->with('attendanceLocation');
+            ->with(['attendanceLocation', 'clockOutAttendanceLocation']);
 
         if ($workDateFilter !== null) {
             $query->whereDate('work_date', $workDateFilter);
@@ -188,8 +193,23 @@ class MobileAttendanceController extends Controller
             ], 422);
         }
 
-        $location = $attendance->attendanceLocation;
-        if ($location === null) {
+        $requestedCheckoutLocationId = $request->validated('attendance_location_id');
+        $checkoutLocation = null;
+        if ($requestedCheckoutLocationId !== null) {
+            $checkoutLocation = AttendanceLocation::query()
+                ->whereKey($requestedCheckoutLocationId)
+                ->where('is_active', true)
+                ->first();
+            if ($checkoutLocation === null) {
+                return response()->json([
+                    'message' => 'Lokasi absensi untuk pulang tidak ditemukan atau tidak aktif.',
+                ], 422);
+            }
+        } else {
+            $checkoutLocation = $attendance->attendanceLocation;
+        }
+
+        if ($checkoutLocation === null) {
             return response()->json([
                 'message' => 'Data lokasi absensi tidak ditemukan.',
             ], 422);
@@ -198,19 +218,29 @@ class MobileAttendanceController extends Controller
         $distance = Geo::distanceMeters(
             (float) $request->validated('latitude'),
             (float) $request->validated('longitude'),
-            (float) $location->latitude,
-            (float) $location->longitude,
+            (float) $checkoutLocation->latitude,
+            (float) $checkoutLocation->longitude,
         );
 
-        if ($distance > $location->radius_meters + 25) {
+        if ($employee->is_attendance_strict && $distance > $checkoutLocation->radius_meters + 25) {
             return response()->json([
                 'message' => 'Lokasi GPS di luar radius yang diizinkan.',
             ], 422);
         }
 
+        [$clockOutLat, $clockOutLon] = $this->resolvedStoredCoordinates(
+            $employee->is_attendance_strict,
+            $checkoutLocation,
+            (float) $request->validated('latitude'),
+            (float) $request->validated('longitude'),
+        );
+
         $attendance->clock_out_at = $recordedAt;
-        $attendance->clock_out_latitude = $request->validated('latitude');
-        $attendance->clock_out_longitude = $request->validated('longitude');
+        $attendance->clock_out_latitude = $clockOutLat;
+        $attendance->clock_out_longitude = $clockOutLon;
+        $attendance->clock_out_attendance_location_id = $checkoutLocation->id !== $attendance->attendance_location_id
+            ? $checkoutLocation->id
+            : null;
         $attendance->status = AttendanceDayStatus::Present;
         if (is_string($clientRequestId) && $clientRequestId !== '') {
             $attendance->client_clock_out_request_id = $clientRequestId;
@@ -220,12 +250,37 @@ class MobileAttendanceController extends Controller
         $attendance->clearMediaCollection(Attendance::MEDIA_CLOCK_OUT);
         $attendance->addMediaFromRequest('photo')->toMediaCollection(Attendance::MEDIA_CLOCK_OUT);
 
-        $attendance->load(['attendanceLocation', 'media']);
+        $attendance->load(['attendanceLocation', 'clockOutAttendanceLocation', 'media']);
 
         return response()->json([
             'message' => 'Absen pulang berhasil.',
             'attendance' => $this->attendancePayload($attendance),
         ]);
+    }
+
+    /**
+     * @return array{0: float, 1: float}
+     */
+    private function resolvedStoredCoordinates(
+        bool $strict,
+        AttendanceLocation $referenceLocation,
+        float $clientLatitude,
+        float $clientLongitude,
+    ): array {
+        if ($strict) {
+            return [$clientLatitude, $clientLongitude];
+        }
+
+        $radius = max(0.0, (float) $referenceLocation->radius_meters);
+        if ($radius <= 0.0) {
+            return [(float) $referenceLocation->latitude, (float) $referenceLocation->longitude];
+        }
+
+        return Geo::randomPointWithinDiskMeters(
+            (float) $referenceLocation->latitude,
+            (float) $referenceLocation->longitude,
+            $radius,
+        );
     }
 
     /**
@@ -269,9 +324,10 @@ class MobileAttendanceController extends Controller
      */
     private function attendancePayload(Attendance $attendance): array
     {
-        $attendance->loadMissing(['attendanceLocation', 'media']);
+        $attendance->loadMissing(['attendanceLocation', 'clockOutAttendanceLocation', 'media']);
 
         $location = $attendance->attendanceLocation;
+        $clockOutLocation = $attendance->clockOutAttendanceLocation;
 
         $clockInUrl = $attendance->getFirstMediaUrl(Attendance::MEDIA_CLOCK_IN);
         $clockOutUrl = $attendance->getFirstMediaUrl(Attendance::MEDIA_CLOCK_OUT);
@@ -296,6 +352,14 @@ class MobileAttendanceController extends Controller
                 'latitude' => $location->latitude,
                 'longitude' => $location->longitude,
                 'radius_meters' => $location->radius_meters,
+            ] : null,
+            'clock_out_location' => $clockOutLocation ? [
+                'id' => $clockOutLocation->id,
+                'name' => $clockOutLocation->name,
+                'address' => $clockOutLocation->address,
+                'latitude' => $clockOutLocation->latitude,
+                'longitude' => $clockOutLocation->longitude,
+                'radius_meters' => $clockOutLocation->radius_meters,
             ] : null,
         ];
     }

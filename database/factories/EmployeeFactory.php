@@ -23,10 +23,8 @@ class EmployeeFactory extends Factory
             'nik' => fake()->unique()->numerify('##########'),
             'full_name' => fake()->name(),
             'phone' => fake()->optional()->e164PhoneNumber(),
-            'department' => fake()->optional()->company(),
-            'position' => fake()->optional()->jobTitle(),
             'is_active' => true,
-            'hired_at' => fake()->optional()->date(),
+            'is_attendance_strict' => false,
             'notes' => null,
         ];
     }

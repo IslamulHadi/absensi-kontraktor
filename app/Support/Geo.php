@@ -18,4 +18,29 @@ final class Geo
 
         return $earthRadiusMeters * $c;
     }
+
+    /**
+     * Random WGS84 point uniformly distributed inside a flat disk of radius $radiusMeters
+     * around ($centerLat, $centerLon). Suitable for small radii (geofencing).
+     *
+     * @return array{0: float, 1: float} latitude, longitude
+     */
+    public static function randomPointWithinDiskMeters(float $centerLat, float $centerLon, float $radiusMeters): array
+    {
+        $u = random_int(1, 1_000_000) / 1_000_000;
+        $v = random_int(1, 1_000_000) / 1_000_000;
+        $r = $radiusMeters * sqrt($u);
+        $theta = 2 * M_PI * $v;
+        $dEast = $r * cos($theta);
+        $dNorth = $r * sin($theta);
+        $latMetersPerDegree = 111_320.0;
+        $lonMetersPerDegree = 111_320.0 * cos(deg2rad($centerLat));
+        if (abs($lonMetersPerDegree) < 1e-6) {
+            $lonMetersPerDegree = 111_320.0;
+        }
+        $dLat = $dNorth / $latMetersPerDegree;
+        $dLon = $dEast / $lonMetersPerDegree;
+
+        return [$centerLat + $dLat, $centerLon + $dLon];
+    }
 }
