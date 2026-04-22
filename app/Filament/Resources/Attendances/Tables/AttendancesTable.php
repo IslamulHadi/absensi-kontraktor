@@ -127,7 +127,8 @@ class AttendancesTable
             ->headerActions([
                 ExportAction::make()
                     ->label('Ekspor laporan')
-                    ->exporter(AttendanceExporter::class),
+                    ->exporter(AttendanceExporter::class)
+                    ->columnMapping(false),
             ])
             ->recordActions([
                 ViewAction::make(),

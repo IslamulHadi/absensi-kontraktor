@@ -2,12 +2,12 @@
 
 namespace App\Filament\Exports;
 
-use App\Enums\AttendanceDayStatus;
 use App\Models\Attendance;
 use Carbon\CarbonInterface;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Number;
 
 class AttendanceExporter extends Exporter
@@ -18,11 +18,9 @@ class AttendanceExporter extends Exporter
     {
         return [
             ExportColumn::make('employee.full_name')
-                ->label('Nama pegawai'),
-            ExportColumn::make('employee.nik')
-                ->label('NIK'),
+                ->label('Nama'),
             ExportColumn::make('work_date')
-                ->label('Tanggal kerja')
+                ->label('Tanggal')
                 ->formatStateUsing(function (mixed $state): string {
                     if ($state instanceof CarbonInterface) {
                         return $state->format('Y-m-d');
@@ -34,42 +32,20 @@ class AttendanceExporter extends Exporter
                 ->label('Jam masuk')
                 ->formatStateUsing(fn (mixed $state): string => self::formatDateTime($state)),
             ExportColumn::make('clock_in_photo_url')
-                ->label('Tautan foto masuk')
+                ->label('Foto masuk')
                 ->state(fn (Attendance $record): string => self::photoFullUrl($record, Attendance::MEDIA_CLOCK_IN)),
+            ExportColumn::make('clock_in_location_display')
+                ->label('Lokasi absen masuk')
+                ->state(fn (Attendance $record): string => self::clockInLocationLabel($record)),
             ExportColumn::make('clock_out_at')
                 ->label('Jam keluar')
                 ->formatStateUsing(fn (mixed $state): string => self::formatDateTime($state)),
             ExportColumn::make('clock_out_photo_url')
-                ->label('Tautan foto keluar')
+                ->label('Foto keluar')
                 ->state(fn (Attendance $record): string => self::photoFullUrl($record, Attendance::MEDIA_CLOCK_OUT)),
-            ExportColumn::make('attendanceLocation.name')
-                ->label('Lokasi'),
-            ExportColumn::make('clock_in_latitude')
-                ->label('Lat masuk')
-                ->enabledByDefault(false),
-            ExportColumn::make('clock_in_longitude')
-                ->label('Lon masuk')
-                ->enabledByDefault(false),
-            ExportColumn::make('clock_out_latitude')
-                ->label('Lat keluar')
-                ->enabledByDefault(false),
-            ExportColumn::make('clock_out_longitude')
-                ->label('Lon keluar')
-                ->enabledByDefault(false),
-            ExportColumn::make('status')
-                ->label('Status')
-                ->formatStateUsing(function (mixed $state): string {
-                    if ($state instanceof AttendanceDayStatus) {
-                        return $state->label();
-                    }
-
-                    return AttendanceDayStatus::tryFrom((string) $state)?->label() ?? (string) $state;
-                }),
-            ExportColumn::make('notes')
-                ->label('Catatan'),
-            ExportColumn::make('created_at')
-                ->label('Dicatat pada')
-                ->formatStateUsing(fn (mixed $state): string => self::formatDateTime($state)),
+            ExportColumn::make('clock_out_location_display')
+                ->label('Lokasi absen keluar')
+                ->state(fn (Attendance $record): string => self::clockOutLocationLabel($record)),
         ];
     }
 
@@ -83,6 +59,60 @@ class AttendanceExporter extends Exporter
         }
 
         return $body;
+    }
+
+    /**
+     * @param  Builder<Attendance>  $query
+     * @return Builder<Attendance>
+     */
+    public static function modifyQuery(Builder $query): Builder
+    {
+        return $query->with([
+            'employee',
+            'attendanceLocation',
+            'clockOutAttendanceLocation',
+            'media',
+        ]);
+    }
+
+    public function getJobConnection(): ?string
+    {
+        return 'sync';
+    }
+
+    private static function clockInLocationLabel(Attendance $record): string
+    {
+        $name = $record->attendanceLocation?->name;
+
+        if (filled($name)) {
+            return $name;
+        }
+
+        return self::formatGps($record->clock_in_latitude, $record->clock_in_longitude);
+    }
+
+    private static function clockOutLocationLabel(Attendance $record): string
+    {
+        if ($record->clock_out_attendance_location_id !== null) {
+            return filled($record->clockOutAttendanceLocation?->name)
+                ? (string) $record->clockOutAttendanceLocation->name
+                : '—';
+        }
+
+        if ($record->attendance_location_id !== null) {
+            return 'Sama dengan lokasi masuk';
+        }
+
+        return self::formatGps($record->clock_out_latitude, $record->clock_out_longitude) ?: '—';
+    }
+
+    private static function formatGps(mixed $latitude, mixed $longitude): string
+    {
+        if ($latitude === null || $longitude === null || $latitude === '' || $longitude === '') {
+            return '';
+        }
+
+        return trim((string) $latitude).', '.trim((string) $longitude);
     }
 
     private static function formatDateTime(mixed $state): string
