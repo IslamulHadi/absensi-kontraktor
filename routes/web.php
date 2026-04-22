@@ -2,6 +2,18 @@
 
 use Illuminate\Support\Facades\Route;
 
+Route::get('/apk/absen.apk', function () {
+    $path = public_path('apk/absen.apk');
+
+    if (! is_file($path)) {
+        abort(404);
+    }
+
+    return response()->download($path, 'absen.apk', [
+        'Content-Type' => 'application/vnd.android.package-archive',
+    ]);
+})->name('downloads.absen-apk');
+
 Route::redirect('/', '/admin');
 Route::redirect('/login', '/admin');
 
