@@ -128,7 +128,7 @@ class AttendanceExporter extends Exporter
         }
 
         if ($record->attendance_location_id !== null) {
-            return 'Sama dengan lokasi masuk';
+            return '';
         }
 
         return self::formatGps($record->clock_out_latitude, $record->clock_out_longitude) ?: '—';
