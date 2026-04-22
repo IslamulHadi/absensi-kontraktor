@@ -4,8 +4,10 @@ use App\Filament\Exports\AttendanceExporter;
 use App\Filament\Resources\Attendances\Pages\ListAttendances;
 use App\Models\Attendance;
 use App\Models\User;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Models\Export;
+use ReflectionMethod;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -68,6 +70,31 @@ test('attendance exporter runs export jobs on the sync connection', function () 
     );
 
     expect($exporter->getJobConnection())->toBe('sync');
+});
+
+test('attendance exporter only offers xlsx so photo cells use excel formulas', function () {
+    $user = User::factory()->admin()->create();
+
+    $export = Export::create([
+        'file_disk' => 'local',
+        'file_name' => 'test',
+        'exporter' => AttendanceExporter::class,
+        'total_rows' => 0,
+        'user_id' => $user->id,
+    ]);
+
+    $exporter = $export->getExporter(columnMap: ['work_date' => 'Tanggal'], options: []);
+
+    expect($exporter->getFormats())->toBe([ExportFormat::Xlsx]);
+});
+
+test('spreadsheet image cell value wraps url in excel image formula', function () {
+    $method = new ReflectionMethod(AttendanceExporter::class, 'spreadsheetImageCellValue');
+    $method->setAccessible(true);
+
+    expect($method->invoke(null, ''))->toBe('')
+        ->and($method->invoke(null, 'https://example.com/a.jpg'))->toBe('=IMAGE("https://example.com/a.jpg")')
+        ->and($method->invoke(null, 'https://example.com/a"b.jpg'))->toBe('=IMAGE("https://example.com/a""b.jpg")');
 });
 
 test('attendance clock in photo resolves to absolute url for spreadsheet links', function () {

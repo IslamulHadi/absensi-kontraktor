@@ -4,6 +4,7 @@ namespace App\Filament\Exports;
 
 use App\Models\Attendance;
 use Carbon\CarbonInterface;
+use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
@@ -33,7 +34,9 @@ class AttendanceExporter extends Exporter
                 ->formatStateUsing(fn (mixed $state): string => self::formatDateTime($state)),
             ExportColumn::make('clock_in_photo_url')
                 ->label('Foto masuk')
-                ->state(fn (Attendance $record): string => self::photoFullUrl($record, Attendance::MEDIA_CLOCK_IN)),
+                ->state(fn (Attendance $record): string => self::spreadsheetImageCellValue(
+                    self::photoFullUrl($record, Attendance::MEDIA_CLOCK_IN),
+                )),
             ExportColumn::make('clock_in_location_display')
                 ->label('Lokasi absen masuk')
                 ->state(fn (Attendance $record): string => self::clockInLocationLabel($record)),
@@ -42,7 +45,9 @@ class AttendanceExporter extends Exporter
                 ->formatStateUsing(fn (mixed $state): string => self::formatDateTime($state)),
             ExportColumn::make('clock_out_photo_url')
                 ->label('Foto keluar')
-                ->state(fn (Attendance $record): string => self::photoFullUrl($record, Attendance::MEDIA_CLOCK_OUT)),
+                ->state(fn (Attendance $record): string => self::spreadsheetImageCellValue(
+                    self::photoFullUrl($record, Attendance::MEDIA_CLOCK_OUT),
+                )),
             ExportColumn::make('clock_out_location_display')
                 ->label('Lokasi absen keluar')
                 ->state(fn (Attendance $record): string => self::clockOutLocationLabel($record)),
@@ -78,6 +83,29 @@ class AttendanceExporter extends Exporter
     public function getJobConnection(): ?string
     {
         return 'sync';
+    }
+
+    /**
+     * @return list<ExportFormat>
+     */
+    public function getFormats(): array
+    {
+        return [ExportFormat::Xlsx];
+    }
+
+    /**
+     * Menyisipkan gambar di Excel (Microsoft 365 / Excel untuk web) lewat fungsi IMAGE.
+     * OpenSpout mengenali string yang diawali "=" sebagai formula pada berkas XLSX.
+     */
+    private static function spreadsheetImageCellValue(string $absoluteUrl): string
+    {
+        if ($absoluteUrl === '') {
+            return '';
+        }
+
+        $escaped = str_replace('"', '""', $absoluteUrl);
+
+        return '=IMAGE("'.$escaped.'")';
     }
 
     private static function clockInLocationLabel(Attendance $record): string
