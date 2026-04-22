@@ -8,10 +8,13 @@ use App\Http\Requests\Api\V1\ClockInAttendanceRequest;
 use App\Http\Requests\Api\V1\ClockOutAttendanceRequest;
 use App\Models\Attendance;
 use App\Models\AttendanceLocation;
+use App\Support\AttendancePhotoOptimizer;
 use App\Support\Geo;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class MobileAttendanceController extends Controller
@@ -133,8 +136,11 @@ class MobileAttendanceController extends Controller
         }
         $attendance->save();
 
-        $attendance->clearMediaCollection(Attendance::MEDIA_CLOCK_IN);
-        $attendance->addMediaFromRequest('photo')->toMediaCollection(Attendance::MEDIA_CLOCK_IN);
+        $this->storeOptimizedAttendancePhoto(
+            $attendance,
+            $request->file('photo'),
+            Attendance::MEDIA_CLOCK_IN,
+        );
 
         $attendance->load(['attendanceLocation', 'clockOutAttendanceLocation', 'media']);
 
@@ -247,8 +253,11 @@ class MobileAttendanceController extends Controller
         }
         $attendance->save();
 
-        $attendance->clearMediaCollection(Attendance::MEDIA_CLOCK_OUT);
-        $attendance->addMediaFromRequest('photo')->toMediaCollection(Attendance::MEDIA_CLOCK_OUT);
+        $this->storeOptimizedAttendancePhoto(
+            $attendance,
+            $request->file('photo'),
+            Attendance::MEDIA_CLOCK_OUT,
+        );
 
         $attendance->load(['attendanceLocation', 'clockOutAttendanceLocation', 'media']);
 
@@ -378,5 +387,30 @@ class MobileAttendanceController extends Controller
             'radius_meters' => $location->radius_meters,
             'from_company_default' => $fromCompanyDefault,
         ];
+    }
+
+    private function storeOptimizedAttendancePhoto(
+        Attendance $attendance,
+        UploadedFile $photo,
+        string $collection,
+    ): void {
+        try {
+            $tempPath = AttendancePhotoOptimizer::optimizeToTempFile($photo);
+        } catch (\RuntimeException $e) {
+            throw ValidationException::withMessages([
+                'photo' => [$e->getMessage()],
+            ]);
+        }
+
+        try {
+            $attendance->clearMediaCollection($collection);
+            $attendance->addMedia($tempPath)
+                ->usingFileName(Str::uuid()->toString().'.jpg')
+                ->toMediaCollection($collection);
+        } finally {
+            if (is_file($tempPath)) {
+                unlink($tempPath);
+            }
+        }
     }
 }

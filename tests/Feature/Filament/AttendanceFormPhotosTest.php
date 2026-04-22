@@ -5,6 +5,7 @@ use App\Filament\Resources\Attendances\Pages\CreateAttendance;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\User;
+use App\Support\AttendancePhotoOptimizer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -32,4 +33,11 @@ test('admin can create attendance with clock in and clock out photos', function 
     expect($attendance)->not->toBeNull()
         ->and($attendance->getMedia(Attendance::MEDIA_CLOCK_IN))->toHaveCount(1)
         ->and($attendance->getMedia(Attendance::MEDIA_CLOCK_OUT))->toHaveCount(1);
+
+    $in = $attendance->getFirstMedia(Attendance::MEDIA_CLOCK_IN);
+    $out = $attendance->getFirstMedia(Attendance::MEDIA_CLOCK_OUT);
+    expect($in)->not->toBeNull()
+        ->and($out)->not->toBeNull()
+        ->and((int) $in->size)->toBeLessThanOrEqual(AttendancePhotoOptimizer::MAX_BYTES)
+        ->and((int) $out->size)->toBeLessThanOrEqual(AttendancePhotoOptimizer::MAX_BYTES);
 });

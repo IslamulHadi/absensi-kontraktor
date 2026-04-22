@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\AttendanceLocation;
 use App\Models\Employee;
 use App\Models\User;
+use App\Support\AttendancePhotoOptimizer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -93,6 +94,10 @@ test('employee can clock in with photo stored as spatie media', function () {
     $attendance = Attendance::query()->first();
     expect($attendance)->not->toBeNull()
         ->and($attendance->getMedia(Attendance::MEDIA_CLOCK_IN))->toHaveCount(1);
+
+    $stored = $attendance->getFirstMedia(Attendance::MEDIA_CLOCK_IN);
+    expect($stored)->not->toBeNull()
+        ->and((int) $stored->size)->toBeLessThanOrEqual(AttendancePhotoOptimizer::MAX_BYTES);
 });
 
 test('clock in is rejected outside location radius', function () {

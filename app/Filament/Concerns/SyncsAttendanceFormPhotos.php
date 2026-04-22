@@ -3,7 +3,9 @@
 namespace App\Filament\Concerns;
 
 use App\Models\Attendance;
+use App\Support\AttendancePhotoOptimizer;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 trait SyncsAttendanceFormPhotos
@@ -31,11 +33,24 @@ trait SyncsAttendanceFormPhotos
             $file = is_array($value) ? ($value[0] ?? null) : $value;
 
             if ($file instanceof TemporaryUploadedFile) {
-                $attendance->clearMediaCollection($collection);
-                $attendance->addMedia($file->getRealPath())
-                    ->usingFileName($file->getClientOriginalName())
-                    ->usingName(Str::beforeLast($file->getClientOriginalName(), '.'))
-                    ->toMediaCollection($collection);
+                try {
+                    $tempPath = AttendancePhotoOptimizer::optimizeToTempFile($file);
+                } catch (\RuntimeException $e) {
+                    throw ValidationException::withMessages([
+                        $field => [$e->getMessage()],
+                    ]);
+                }
+
+                try {
+                    $attendance->clearMediaCollection($collection);
+                    $attendance->addMedia($tempPath)
+                        ->usingFileName(Str::uuid()->toString().'.jpg')
+                        ->toMediaCollection($collection);
+                } finally {
+                    if (is_file($tempPath)) {
+                        unlink($tempPath);
+                    }
+                }
 
                 continue;
             }
