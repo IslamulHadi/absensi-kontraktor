@@ -8,6 +8,7 @@ use App\Filament\Resources\AppVersions\Pages\ListAppVersions;
 use App\Filament\Resources\AppVersions\Schemas\AppVersionForm;
 use App\Filament\Resources\AppVersions\Tables\AppVersionsTable;
 use App\Models\AppVersion;
+use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -47,6 +48,13 @@ class AppVersionResource extends Resource
         return [
             //
         ];
+    }
+
+    private static function isCurrentUserSuperAdmin(): bool
+    {
+        $user = auth()->user();
+
+        return $user instanceof User && $user->isSuperAdmin();
     }
 
     public static function getPages(): array
