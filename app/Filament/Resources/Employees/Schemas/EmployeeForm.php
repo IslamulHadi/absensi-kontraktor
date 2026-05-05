@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Employees\Schemas;
 
 use App\Models\Employee;
 use App\Models\User;
+use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -70,7 +71,22 @@ class EmployeeForm
                             ->minLength(3)
                             ->maxLength(64)
                             ->regex('/^[a-zA-Z0-9._-]+$/')
-                            ->unique(table: 'users', column: 'username')
+                            ->unique(
+                                table: 'users',
+                                column: 'username',
+                                ignorable: static function (Field $component): ?User {
+                                    $livewire = $component->getLivewire();
+                                    if (! $livewire instanceof HasSchemas) {
+                                        return null;
+                                    }
+                                    $record = $livewire->getRecord();
+                                    if (! $record instanceof Employee || $record->user_id === null) {
+                                        return null;
+                                    }
+
+                                    return User::query()->find($record->user_id);
+                                },
+                            )
                             ->dehydrated(false)
                             ->visible(function (LivewireComponent&HasSchemas $livewire, string $operation): bool {
                                 if ($operation === 'create') {
