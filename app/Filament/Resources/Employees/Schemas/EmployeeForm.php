@@ -50,7 +50,7 @@ class EmployeeForm
                     ])
                     ->columns(2),
                 Section::make('Akun aplikasi mobile')
-                    ->description('Username dan password untuk login di aplikasi mobile (opsional saat tambah pegawai; bisa ditambahkan nanti saat mengubah data). Email sistem dibuat otomatis dan tidak dipakai untuk login mobile.')
+                    ->description('Username dan password untuk login di aplikasi mobile (opsional saat tambah pegawai; bisa ditambahkan nanti saat mengubah data)')
                     ->schema([
                         TextInput::make('display_user_username')
                             ->label('Username akun saat ini')
