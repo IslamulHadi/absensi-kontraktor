@@ -249,6 +249,95 @@ test('clock out accepts work_date to resolve open attendance after midnight', fu
     expect($row->clock_out_at)->not->toBeNull();
 });
 
+test('clock in is rejected for strict employee with mock GPS flag', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create(['role' => UserRole::Employee]);
+    $employee = Employee::factory()->for($user)->create([
+        'is_active' => true,
+        'is_attendance_strict' => true,
+    ]);
+    $location = AttendanceLocation::factory()->create([
+        'latitude' => -6.2,
+        'longitude' => 106.8,
+        'radius_meters' => 500,
+        'is_active' => true,
+    ]);
+    $employee->attendanceLocations()->attach($location);
+
+    $token = $user->createToken('test')->plainTextToken;
+
+    $response = $this->withToken($token)->post('/api/v1/me/attendances/clock-in', [
+        'attendance_location_id' => $location->id,
+        'latitude' => '-6.2',
+        'longitude' => '106.8',
+        'photo' => UploadedFile::fake()->image('in.jpg', 120, 120),
+        'is_mock_location' => true,
+    ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonPath('message', 'Mock GPS terdeteksi. Nonaktifkan aplikasi pemalsu lokasi sebelum absen.');
+    expect(Attendance::query()->count())->toBe(0);
+});
+
+test('clock in is allowed for non-strict employee even with mock GPS flag', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create(['role' => UserRole::Employee]);
+    $employee = Employee::factory()->for($user)->create([
+        'is_active' => true,
+        'is_attendance_strict' => false,
+    ]);
+    $location = AttendanceLocation::factory()->create([
+        'latitude' => -6.2,
+        'longitude' => 106.8,
+        'radius_meters' => 500,
+        'is_active' => true,
+    ]);
+    $employee->attendanceLocations()->attach($location);
+
+    $token = $user->createToken('test')->plainTextToken;
+
+    $response = $this->withToken($token)->post('/api/v1/me/attendances/clock-in', [
+        'attendance_location_id' => $location->id,
+        'latitude' => '-6.2',
+        'longitude' => '106.8',
+        'photo' => UploadedFile::fake()->image('in.jpg', 120, 120),
+        'is_mock_location' => true,
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJsonPath('message', 'Absen masuk berhasil.');
+});
+
+test('clock in rejects client_recorded_at older than 48 hours', function () {
+    Storage::fake('public');
+
+    $user = User::factory()->create(['role' => UserRole::Employee]);
+    $employee = Employee::factory()->for($user)->create(['is_active' => true]);
+    $location = AttendanceLocation::factory()->create([
+        'latitude' => -6.2,
+        'longitude' => 106.8,
+        'radius_meters' => 500,
+        'is_active' => true,
+    ]);
+    $employee->attendanceLocations()->attach($location);
+
+    $token = $user->createToken('test')->plainTextToken;
+
+    $response = $this->withToken($token)->postJson('/api/v1/me/attendances/clock-in', [
+        'attendance_location_id' => $location->id,
+        'latitude' => '-6.2',
+        'longitude' => '106.8',
+        'photo' => UploadedFile::fake()->image('in.jpg', 120, 120),
+        'client_recorded_at' => now()->subHours(72)->toIso8601String(),
+    ]);
+
+    $response->assertUnprocessable()
+        ->assertJsonValidationErrors(['client_recorded_at']);
+    expect(Attendance::query()->count())->toBe(0);
+});
+
 test('employee can clock out after clock in with second photo', function () {
     Storage::fake('public');
 
