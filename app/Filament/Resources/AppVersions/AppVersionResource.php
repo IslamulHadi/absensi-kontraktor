@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Override;
 
 class AppVersionResource extends Resource
 {
@@ -34,6 +35,11 @@ class AppVersionResource extends Resource
     public static function table(Table $table): Table
     {
         return AppVersionsTable::configure($table);
+    }
+
+    public static function canViewAny(): bool
+    {
+        return self::isCurrentUserSuperAdmin();
     }
 
     public static function getRelations(): array
