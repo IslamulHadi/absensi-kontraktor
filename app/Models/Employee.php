@@ -21,7 +21,7 @@ class Employee extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'is_attendance_strict' => false,
+        'is_attendance_strict' => true,
     ];
 
     protected static function booted(): void

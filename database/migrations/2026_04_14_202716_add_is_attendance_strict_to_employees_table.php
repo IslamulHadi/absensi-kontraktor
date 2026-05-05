@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('employees', function (Blueprint $table) {
             $table->boolean('is_attendance_strict')
-                ->default(false)
+                ->default(true)
                 ->after('is_active');
         });
     }

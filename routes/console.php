@@ -11,3 +11,6 @@ Artisan::command('inspire', function () {
 Schedule::command('attendance:mark-absent-for-missing')
     ->timezone((string) config('attendance.day_close_timezone'))
     ->dailyAt((string) config('attendance.day_close_time'));
+
+Schedule::command('sanctum:prune-expired --hours=24')
+    ->daily();

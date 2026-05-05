@@ -11,6 +11,7 @@ use App\Models\AttendanceLocation;
 use App\Support\AttendancePhotoOptimizer;
 use App\Support\Geo;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -69,6 +70,12 @@ class MobileAttendanceController extends Controller
     public function clockIn(ClockInAttendanceRequest $request): JsonResponse
     {
         $employee = $request->user()->employee;
+
+        if ($employee->is_attendance_strict && $request->boolean('is_mock_location')) {
+            return response()->json([
+                'message' => 'Mock GPS terdeteksi. Nonaktifkan aplikasi pemalsu lokasi sebelum absen.',
+            ], 422);
+        }
 
         $recordedAt = $this->parseClientRecordedAt($request->validated('client_recorded_at'));
 
@@ -153,6 +160,12 @@ class MobileAttendanceController extends Controller
     public function clockOut(ClockOutAttendanceRequest $request): JsonResponse
     {
         $employee = $request->user()->employee;
+
+        if ($employee->is_attendance_strict && $request->boolean('is_mock_location')) {
+            return response()->json([
+                'message' => 'Mock GPS terdeteksi. Nonaktifkan aplikasi pemalsu lokasi sebelum absen.',
+            ], 422);
+        }
 
         $recordedAt = $this->parseClientRecordedAt($request->validated('client_recorded_at'));
 
@@ -297,7 +310,7 @@ class MobileAttendanceController extends Controller
      *
      * @throws ValidationException
      */
-    private function parseClientRecordedAt(?string $raw): Carbon
+    private function parseClientRecordedAt(?string $raw): CarbonInterface
     {
         if ($raw === null || $raw === '') {
             return now();
@@ -317,9 +330,9 @@ class MobileAttendanceController extends Controller
             ]);
         }
 
-        if ($t->lessThan(now()->subDays(14))) {
+        if ($t->lessThan(now()->subHours(48))) {
             throw ValidationException::withMessages([
-                'client_recorded_at' => ['Waktu perekaman terlalu lama (lebih dari 14 hari).'],
+                'client_recorded_at' => ['Waktu perekaman terlalu lama (lebih dari 48 jam). Hubungi admin untuk pencatatan manual.'],
             ]);
         }
 

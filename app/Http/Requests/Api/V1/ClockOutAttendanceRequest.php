@@ -26,6 +26,7 @@ class ClockOutAttendanceRequest extends FormRequest
             'client_request_id' => ['nullable', 'string', 'max:64'],
             'client_recorded_at' => ['nullable', 'string', 'max:48'],
             'work_date' => ['nullable', 'date_format:Y-m-d'],
+            'is_mock_location' => ['nullable', 'boolean'],
         ];
     }
 
