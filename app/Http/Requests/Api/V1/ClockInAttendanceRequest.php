@@ -25,6 +25,7 @@ class ClockInAttendanceRequest extends FormRequest
             'photo' => ['required', 'image', 'max:1024'],
             'client_request_id' => ['nullable', 'string', 'max:64'],
             'client_recorded_at' => ['nullable', 'string', 'max:48'],
+            'is_mock_location' => ['nullable', 'boolean'],
         ];
     }
 
