@@ -13,12 +13,14 @@ use Illuminate\Database\Eloquent\Builder;
 
 class RecentAttendancesTableWidget extends TableWidget
 {
-    protected static ?int $sort = -4;
+    protected static ?int $sort = -1;
+
+    protected ?string $pollingInterval = '30s';
 
     /**
      * @var int | string | array<string, int | null>
      */
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
@@ -30,6 +32,9 @@ class RecentAttendancesTableWidget extends TableWidget
                 ->orderByDesc('work_date')
                 ->orderByDesc('clock_in_at')
                 ->orderByDesc('id'))
+            ->paginated([10, 25, 50])
+            ->defaultPaginationPageOption(10)
+            ->striped()
             ->columns([
                 TextColumn::make('employee.full_name')
                     ->label('Pegawai')
@@ -54,6 +59,18 @@ class RecentAttendancesTableWidget extends TableWidget
                             : AttendanceDayStatus::from((string) $state);
 
                         return $enum->label();
+                    })
+                    ->color(function (AttendanceDayStatus|string $state): string {
+                        $enum = $state instanceof AttendanceDayStatus
+                            ? $state
+                            : AttendanceDayStatus::from((string) $state);
+
+                        return match ($enum) {
+                            AttendanceDayStatus::Present => 'success',
+                            AttendanceDayStatus::Incomplete => 'warning',
+                            AttendanceDayStatus::Absent => 'danger',
+                            AttendanceDayStatus::OnLeave => 'gray',
+                        };
                     }),
                 TextColumn::make('attendanceLocation.name')
                     ->label('Lokasi')

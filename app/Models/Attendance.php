@@ -19,6 +19,43 @@ class Attendance extends Model implements HasMedia
 
     public const string MEDIA_CLOCK_OUT = 'clock_out';
 
+    protected static function booted(): void
+    {
+        static::saved(function (Attendance $attendance): void {
+            $attendance->syncTimestampsFromClockTimes();
+        });
+    }
+
+    /**
+     * Keep created_at / updated_at aligned with check-in / check-out so listings and exports match absensi narrative.
+     * When there is no check-out time yet, updated_at matches check-in until pulang is recorded.
+     */
+    public function syncTimestampsFromClockTimes(): void
+    {
+        if ($this->clock_in_at === null) {
+            return;
+        }
+
+        $createdAt = $this->clock_in_at;
+        $updatedAt = $this->clock_out_at ?? $this->clock_in_at;
+
+        if (
+            $this->created_at !== null
+            && $this->updated_at !== null
+            && $this->created_at->equalTo($createdAt)
+            && $this->updated_at->equalTo($updatedAt)
+        ) {
+            return;
+        }
+
+        static::query()->whereKey($this->getKey())->update([
+            'created_at' => $createdAt,
+            'updated_at' => $updatedAt,
+        ]);
+
+        $this->refresh();
+    }
+
     /**
      * @return list<string>
      */
