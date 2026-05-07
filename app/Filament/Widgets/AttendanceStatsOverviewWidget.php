@@ -15,6 +15,8 @@ class AttendanceStatsOverviewWidget extends StatsOverviewWidget
 {
     protected static ?int $sort = -5;
 
+    protected ?string $pollingInterval = '30s';
+
     protected ?string $heading = 'Ringkasan absensi';
 
     protected ?string $description = 'Angka untuk tanggal hari ini (zona waktu aplikasi). Grafik menampilkan tren 7 hari terakhir.';
@@ -25,6 +27,7 @@ class AttendanceStatsOverviewWidget extends StatsOverviewWidget
     protected function getStats(): array
     {
         $today = Carbon::today();
+        $yesterday = $today->copy()->subDay();
 
         $todayQuery = Attendance::query()->whereDate('work_date', $today);
 
@@ -42,10 +45,6 @@ class AttendanceStatsOverviewWidget extends StatsOverviewWidget
             ->where('status', AttendanceDayStatus::Absent)
             ->count();
 
-        $onLeaveToday = (clone $todayQuery)
-            ->where('status', AttendanceDayStatus::OnLeave)
-            ->count();
-
         $activeEmployees = Employee::query()->where('is_active', true)->count();
 
         $activeLocations = AttendanceLocation::query()->where('is_active', true)->count();
@@ -57,35 +56,73 @@ class AttendanceStatsOverviewWidget extends StatsOverviewWidget
                 ->count('employee_id')
             : 0;
 
-        $chartData = collect(range(6, 0))
+        $totalChartData = collect(range(6, 0))
             ->map(fn (int $daysAgo): int => Attendance::query()
                 ->whereDate('work_date', $today->copy()->subDays($daysAgo))
                 ->count())
             ->all();
 
+        $presentChartData = collect(range(6, 0))
+            ->map(fn (int $daysAgo): int => Attendance::query()
+                ->whereDate('work_date', $today->copy()->subDays($daysAgo))
+                ->where('status', AttendanceDayStatus::Present)
+                ->count())
+            ->all();
+
+        $incompleteChartData = collect(range(6, 0))
+            ->map(fn (int $daysAgo): int => Attendance::query()
+                ->whereDate('work_date', $today->copy()->subDays($daysAgo))
+                ->where('status', AttendanceDayStatus::Incomplete)
+                ->count())
+            ->all();
+
+        $absentChartData = collect(range(6, 0))
+            ->map(fn (int $daysAgo): int => Attendance::query()
+                ->whereDate('work_date', $today->copy()->subDays($daysAgo))
+                ->where('status', AttendanceDayStatus::Absent)
+                ->count())
+            ->all();
+
+        $presentYesterday = Attendance::query()
+            ->whereDate('work_date', $yesterday)
+            ->where('status', AttendanceDayStatus::Present)
+            ->count();
+
+        $attendanceRate = $activeEmployees > 0
+            ? (int) round(($presentToday / $activeEmployees) * 100)
+            : 0;
+
+        $rateDelta = $this->describeDelta($presentToday, $presentYesterday);
+
         return [
             Stat::make('Catatan hari ini', $totalToday)
                 ->description('Total baris absensi untuk tanggal ini')
                 ->descriptionIcon(Heroicon::OutlinedCalendarDays)
-                ->chart($chartData)
+                ->chart($totalChartData)
                 ->chartColor('primary')
                 ->color('primary'),
+            Stat::make('Tingkat kehadiran', $attendanceRate.'%')
+                ->description($rateDelta['text'])
+                ->descriptionIcon($rateDelta['icon'])
+                ->color($rateDelta['color']),
             Stat::make('Hadir lengkap', $presentToday)
                 ->description('Selesai masuk dan keluar')
                 ->descriptionIcon(Heroicon::OutlinedCheckCircle)
+                ->chart($presentChartData)
+                ->chartColor('success')
                 ->color('success'),
             Stat::make('Belum lengkap', $incompleteToday)
                 ->description('Masih perlu dilengkapi')
                 ->descriptionIcon(Heroicon::OutlinedClock)
+                ->chart($incompleteChartData)
+                ->chartColor('warning')
                 ->color('warning'),
             Stat::make('Tidak hadir', $absentToday)
                 ->description('Dicatat absen hari ini')
                 ->descriptionIcon(Heroicon::OutlinedXCircle)
+                ->chart($absentChartData)
+                ->chartColor('danger')
                 ->color('danger'),
-            // Stat::make('Izin / cuti', $onLeaveToday)
-            //     ->description('Status izin untuk hari ini')
-            //     ->descriptionIcon(Heroicon::OutlinedPaperAirplane)
-            //     ->color('gray'),
             Stat::make('Pegawai aktif', $activeEmployees)
                 ->description(
                     $activeEmployees > 0
@@ -98,6 +135,44 @@ class AttendanceStatsOverviewWidget extends StatsOverviewWidget
                 ->description('Lokasi absensi yang dapat dipakai')
                 ->descriptionIcon(Heroicon::OutlinedMapPin)
                 ->color('gray'),
+        ];
+    }
+
+    /**
+     * @return array{text: string, icon: Heroicon, color: string}
+     */
+    private function describeDelta(int $today, int $yesterday): array
+    {
+        $diff = $today - $yesterday;
+
+        if ($yesterday === 0 && $today === 0) {
+            return [
+                'text' => 'Belum ada data kemarin',
+                'icon' => Heroicon::OutlinedMinusSmall,
+                'color' => 'gray',
+            ];
+        }
+
+        if ($diff === 0) {
+            return [
+                'text' => 'Sama dengan kemarin',
+                'icon' => Heroicon::OutlinedMinusSmall,
+                'color' => 'gray',
+            ];
+        }
+
+        if ($diff > 0) {
+            return [
+                'text' => sprintf('Naik %d dari kemarin', $diff),
+                'icon' => Heroicon::OutlinedArrowTrendingUp,
+                'color' => 'success',
+            ];
+        }
+
+        return [
+            'text' => sprintf('Turun %d dari kemarin', abs($diff)),
+            'icon' => Heroicon::OutlinedArrowTrendingDown,
+            'color' => 'danger',
         ];
     }
 }
