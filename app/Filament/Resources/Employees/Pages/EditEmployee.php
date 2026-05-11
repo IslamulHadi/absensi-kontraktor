@@ -59,7 +59,7 @@ class EditEmployee extends EditRecord
         $this->record->load('user');
 
         if ($this->record->user_id && filled($this->pendingNewPassword)) {
-            $this->record->user()->update([
+            $this->record->user?->update([
                 'password' => $this->pendingNewPassword,
             ]);
         }
