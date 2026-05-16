@@ -32,6 +32,10 @@ class AttendanceExporter extends Exporter
             ExportColumn::make('clock_in_at')
                 ->label('Jam masuk')
                 ->formatStateUsing(fn (mixed $state): string => self::formatDateTime($state)),
+            ExportColumn::make('late_minutes')
+                ->label('Telat (menit)')
+                ->state(fn (Attendance $record): ?int => $record->late_minutes)
+                ->formatStateUsing(fn (?int $state): string => $state === null ? '' : (string) $state),
             ExportColumn::make('clock_in_photo_url')
                 ->label('Foto masuk')
                 ->state(fn (Attendance $record): string => self::spreadsheetImageCellValue(

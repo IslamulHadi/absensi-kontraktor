@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\AttendanceDayStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\AttendanceFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -65,6 +67,8 @@ class Attendance extends Model implements HasMedia
         'clock_out_attendance_location_id',
         'work_date',
         'clock_in_at',
+        'clock_in_on_time_at',
+        'clock_in_tolerance_minutes',
         'clock_out_at',
         'clock_in_latitude',
         'clock_in_longitude',
@@ -85,12 +89,73 @@ class Attendance extends Model implements HasMedia
             'work_date' => 'date',
             'clock_in_at' => 'datetime',
             'clock_out_at' => 'datetime',
+            'clock_in_tolerance_minutes' => 'integer',
             'clock_in_latitude' => 'decimal:8',
             'clock_in_longitude' => 'decimal:8',
             'clock_out_latitude' => 'decimal:8',
             'clock_out_longitude' => 'decimal:8',
             'status' => AttendanceDayStatus::class,
         ];
+    }
+
+    /**
+     * Snapshot the current attendance setting (jam masuk standar + toleransi)
+     * onto this row so future setting changes never rewrite history. Idempotent:
+     * never overwrites an already-snapshotted value.
+     */
+    public function applyClockInToleranceSnapshot(?AttendanceSetting $setting = null): void
+    {
+        $setting ??= AttendanceSetting::current();
+
+        if (blank($this->clock_in_on_time_at)) {
+            $this->clock_in_on_time_at = $setting->clock_in_on_time_at;
+        }
+
+        if ($this->clock_in_tolerance_minutes === null) {
+            $this->clock_in_tolerance_minutes = $setting->clock_in_tolerance_minutes;
+        }
+    }
+
+    /**
+     * Selisih menit antara clock_in_at dan batas akhir toleransi yang berlaku
+     * pada hari tersebut. Mengembalikan `null` ketika data tidak cukup, atau 0
+     * ketika tepat waktu / lebih awal dari batas toleransi.
+     */
+    protected function lateMinutes(): Attribute
+    {
+        return Attribute::make(
+            get: function (): ?int {
+                $clockInAt = $this->clock_in_at;
+                $onTime = $this->clock_in_on_time_at;
+
+                if (! $clockInAt instanceof CarbonInterface || blank($onTime)) {
+                    return null;
+                }
+
+                $tolerance = max(0, (int) ($this->clock_in_tolerance_minutes ?? 0));
+
+                $deadline = $clockInAt->copy()
+                    ->setTimeFromTimeString((string) $onTime)
+                    ->addMinutes($tolerance);
+
+                if ($clockInAt->lessThanOrEqualTo($deadline)) {
+                    return 0;
+                }
+
+                return (int) $deadline->diffInMinutes($clockInAt);
+            },
+        );
+    }
+
+    protected function isLate(): Attribute
+    {
+        return Attribute::make(
+            get: function (): bool {
+                $minutes = $this->late_minutes;
+
+                return $minutes !== null && $minutes > 0;
+            },
+        );
     }
 
     public function registerMediaCollections(): void

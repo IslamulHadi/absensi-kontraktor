@@ -20,15 +20,15 @@ class AttendanceInfolist
                     ->schema([
                         ImageEntry::make('clock_in_photo')
                             ->label('Foto masuk')
-                            ->state(fn(Attendance $record): ?string => self::photoPathRelativeToDisk($record, Attendance::MEDIA_CLOCK_IN))
-                            ->disk(fn(Attendance $record): string => self::photoDiskName($record, Attendance::MEDIA_CLOCK_IN))
+                            ->state(fn (Attendance $record): ?string => self::photoPathRelativeToDisk($record, Attendance::MEDIA_CLOCK_IN))
+                            ->disk(fn (Attendance $record): string => self::photoDiskName($record, Attendance::MEDIA_CLOCK_IN))
                             ->checkFileExistence(false)
                             ->imageHeight(220)
                             ->placeholder('Belum ada foto'),
                         ImageEntry::make('clock_out_photo')
                             ->label('Foto pulang')
-                            ->state(fn(Attendance $record): ?string => self::photoPathRelativeToDisk($record, Attendance::MEDIA_CLOCK_OUT))
-                            ->disk(fn(Attendance $record): string => self::photoDiskName($record, Attendance::MEDIA_CLOCK_OUT))
+                            ->state(fn (Attendance $record): ?string => self::photoPathRelativeToDisk($record, Attendance::MEDIA_CLOCK_OUT))
+                            ->disk(fn (Attendance $record): string => self::photoDiskName($record, Attendance::MEDIA_CLOCK_OUT))
                             ->checkFileExistence(false)
                             ->imageHeight(220)
                             ->placeholder('Belum ada foto'),
@@ -55,6 +55,33 @@ class AttendanceInfolist
                         TextEntry::make('clock_in_at')
                             ->label('Jam masuk')
                             ->dateTime(),
+                        TextEntry::make('clock_in_on_time_at')
+                            ->label('Jam masuk standar')
+                            ->placeholder('—'),
+                        TextEntry::make('clock_in_tolerance_minutes')
+                            ->label('Toleransi')
+                            ->placeholder('—')
+                            ->formatStateUsing(fn (?int $state): string => $state === null ? '—' : $state.' menit'),
+                        TextEntry::make('late_minutes')
+                            ->label('Keterlambatan')
+                            ->state(fn (Attendance $record): ?int => $record->late_minutes)
+                            ->badge()
+                            ->color(fn (?int $state): string => match (true) {
+                                $state === null => 'gray',
+                                $state <= 0 => 'success',
+                                default => 'danger',
+                            })
+                            ->formatStateUsing(function (?int $state): string {
+                                if ($state === null) {
+                                    return '—';
+                                }
+
+                                if ($state <= 0) {
+                                    return 'Tepat waktu';
+                                }
+
+                                return $state.' menit';
+                            }),
                         TextEntry::make('clock_out_at')
                             ->label('Jam pulang')
                             ->dateTime(),

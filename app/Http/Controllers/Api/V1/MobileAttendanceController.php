@@ -129,6 +129,7 @@ class MobileAttendanceController extends Controller
         $attendance->work_date = $workDate;
         $attendance->attendance_location_id = $location->id;
         $attendance->clock_in_at = $recordedAt;
+        $attendance->applyClockInToleranceSnapshot();
         [$clockInLat, $clockInLon] = $this->resolvedStoredCoordinates(
             $employee->is_attendance_strict,
             $location,
@@ -358,6 +359,10 @@ class MobileAttendanceController extends Controller
             'id' => $attendance->id,
             'work_date' => $attendance->work_date->format('Y-m-d'),
             'clock_in_at' => $attendance->clock_in_at?->toIso8601String(),
+            'clock_in_on_time_at' => $attendance->clock_in_on_time_at,
+            'clock_in_tolerance_minutes' => $attendance->clock_in_tolerance_minutes,
+            'late_minutes' => $attendance->late_minutes,
+            'is_late' => $attendance->is_late,
             'clock_out_at' => $attendance->clock_out_at?->toIso8601String(),
             'clock_in_latitude' => $attendance->clock_in_latitude,
             'clock_in_longitude' => $attendance->clock_in_longitude,
