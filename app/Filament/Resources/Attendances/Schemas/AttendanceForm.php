@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Attendances\Schemas;
 
 use App\Enums\AttendanceDayStatus;
+use App\Models\AttendanceSetting;
 use App\Models\Employee;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -10,6 +11,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TimePicker;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -119,6 +121,25 @@ class AttendanceForm
                         TextInput::make('clock_out_longitude')
                             ->label('Lng keluar')
                             ->numeric(),
+                    ])
+                    ->columns(2)
+                    ->collapsed(),
+                Section::make('Toleransi keterlambatan')
+                    ->description('Snapshot pengaturan saat absen masuk. Atur acuannya di '
+                        .'menu Pengaturan → Toleransi Absen Masuk.')
+                    ->schema([
+                        TimePicker::make('clock_in_on_time_at')
+                            ->label('Jam masuk standar')
+                            ->seconds(false)
+                            ->default(fn (): ?string => AttendanceSetting::current()->clock_in_on_time_at)
+                            ->helperText('Otomatis terisi dari pengaturan. Kosongkan jika tidak ingin menilai keterlambatan.'),
+                        TextInput::make('clock_in_tolerance_minutes')
+                            ->label('Toleransi (menit)')
+                            ->integer()
+                            ->minValue(0)
+                            ->maxValue(240)
+                            ->suffix('menit')
+                            ->default(fn (): int => AttendanceSetting::current()->clock_in_tolerance_minutes),
                     ])
                     ->columns(2)
                     ->collapsed(),

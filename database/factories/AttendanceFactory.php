@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\AttendanceDayStatus;
 use App\Models\Attendance;
+use App\Models\AttendanceSetting;
 use App\Models\Employee;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -26,6 +27,8 @@ class AttendanceFactory extends Factory
             'attendance_location_id' => null,
             'work_date' => $workDate,
             'clock_in_at' => null,
+            'clock_in_on_time_at' => null,
+            'clock_in_tolerance_minutes' => null,
             'clock_out_at' => null,
             'clock_in_latitude' => null,
             'clock_in_longitude' => null,
@@ -34,5 +37,26 @@ class AttendanceFactory extends Factory
             'status' => AttendanceDayStatus::Incomplete,
             'notes' => null,
         ];
+    }
+
+    public function lateBy(int $minutes, ?string $onTime = null, ?int $toleranceMinutes = null): self
+    {
+        $onTime ??= AttendanceSetting::DEFAULT_CLOCK_IN_ON_TIME_AT;
+        $toleranceMinutes ??= AttendanceSetting::DEFAULT_CLOCK_IN_TOLERANCE_MINUTES;
+
+        return $this->state(function () use ($minutes, $onTime, $toleranceMinutes): array {
+            $workDate = now()->startOfDay();
+            $clockInAt = $workDate->copy()
+                ->setTimeFromTimeString($onTime)
+                ->addMinutes($toleranceMinutes + $minutes);
+
+            return [
+                'work_date' => $workDate,
+                'clock_in_at' => $clockInAt,
+                'clock_in_on_time_at' => $onTime,
+                'clock_in_tolerance_minutes' => $toleranceMinutes,
+                'status' => AttendanceDayStatus::Incomplete,
+            ];
+        });
     }
 }

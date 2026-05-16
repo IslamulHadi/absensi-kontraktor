@@ -44,6 +44,27 @@ class AttendancesTable
                     ->label('Masuk')
                     ->dateTime()
                     ->sortable(),
+                TextColumn::make('late_minutes')
+                    ->label('Telat')
+                    ->badge()
+                    ->state(fn (Attendance $record): ?int => $record->late_minutes)
+                    ->color(fn (?int $state): string => match (true) {
+                        $state === null => 'gray',
+                        $state <= 0 => 'success',
+                        default => 'danger',
+                    })
+                    ->formatStateUsing(function (?int $state): string {
+                        if ($state === null) {
+                            return '—';
+                        }
+
+                        if ($state <= 0) {
+                            return 'Tepat waktu';
+                        }
+
+                        return $state.' menit';
+                    })
+                    ->toggleable(),
                 ImageColumn::make('clock_in_photo')
                     ->label('Foto masuk')
                     ->state(fn (Attendance $record): ?string => self::photoPathRelativeToDisk($record, Attendance::MEDIA_CLOCK_IN))
