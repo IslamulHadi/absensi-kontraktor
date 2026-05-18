@@ -157,7 +157,8 @@ class AttendanceForm
                             ->visibility('public')
                             ->downloadable()
                             ->openable()
-                            ->dehydrated(false),
+                            ->dehydrated(false)
+                            ->saved(false),
                         FileUpload::make('clock_out_photo')
                             ->label('Foto keluar')
                             ->image()
@@ -170,7 +171,8 @@ class AttendanceForm
                             ->visibility('public')
                             ->downloadable()
                             ->openable()
-                            ->dehydrated(false),
+                            ->dehydrated(false)
+                            ->saved(false),
                     ])
                     ->columns(2)
                     ->collapsed(),
