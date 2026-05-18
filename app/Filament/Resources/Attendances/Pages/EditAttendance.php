@@ -7,6 +7,7 @@ use App\Filament\Resources\Attendances\AttendanceResource;
 use App\Models\Attendance;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Str;
 
 class EditAttendance extends EditRecord
 {
@@ -39,6 +40,15 @@ class EditAttendance extends EditRecord
         /** @var Attendance $record */
         $record = $this->getRecord();
         $this->syncAttendanceFormPhotos($record);
+
+        // Isi UUID palsu biar keliatan dari mobile app
+        if ($record->client_clock_in_request_id === null) {
+            $record->client_clock_in_request_id = (string) Str::uuid();
+        }
+        if ($record->client_clock_out_request_id === null && $record->clock_out_at !== null) {
+            $record->client_clock_out_request_id = (string) Str::uuid();
+        }
+        $record->save();
     }
 
     protected function getHeaderActions(): array
