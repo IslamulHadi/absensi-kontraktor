@@ -4,9 +4,10 @@ namespace App\Filament\Concerns;
 
 use App\Models\Attendance;
 use App\Support\AttendancePhotoOptimizer;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 trait SyncsAttendanceFormPhotos
 {
@@ -26,13 +27,13 @@ trait SyncsAttendanceFormPhotos
                 continue;
             }
 
-            if ($value === null) {
+            $file = $this->resolveAttendanceFormPhotoUpload($field, $value);
+
+            if ($file === null) {
                 continue;
             }
 
-            $file = is_array($value) ? ($value[0] ?? null) : $value;
-
-            if ($file instanceof TemporaryUploadedFile) {
+            if ($file instanceof UploadedFile) {
                 try {
                     $tempPath = AttendancePhotoOptimizer::optimizeToTempFile($file);
                 } catch (\RuntimeException $e) {
@@ -59,5 +60,41 @@ trait SyncsAttendanceFormPhotos
                 continue;
             }
         }
+    }
+
+    /**
+     * @return UploadedFile|string|null
+     */
+    protected function resolveAttendanceFormPhotoUpload(string $field, mixed $value): UploadedFile|string|null
+    {
+        $component = $this->form->getComponentByStatePath($field);
+
+        if ($component !== null) {
+            $value = $component->getRawState();
+        }
+
+        if ($value instanceof UploadedFile) {
+            return $value;
+        }
+
+        if (is_string($value) && filled($value)) {
+            return $value;
+        }
+
+        if (! is_array($value)) {
+            return null;
+        }
+
+        $file = Arr::first($value);
+
+        if ($file instanceof UploadedFile) {
+            return $file;
+        }
+
+        if (is_string($file) && filled($file)) {
+            return $file;
+        }
+
+        return null;
     }
 }
