@@ -9,7 +9,6 @@ use Carbon\Carbon;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class EditAttendance extends EditRecord
 {
@@ -37,19 +36,18 @@ class EditAttendance extends EditRecord
         return $data;
     }
 
-    protected function mutateFormDataBeforeSave(array $data): array
+    protected function beforeSave(): void
     {
+        $data = $this->form->getRawState();
+
         if (isset($data['clock_in_at'], $data['clock_out_at'])) {
             $clockIn = Carbon::parse($data['clock_in_at']);
             $clockOut = Carbon::parse($data['clock_out_at']);
             if ($clockOut <= $clockIn) {
-                throw ValidationException::withMessages([
-                    'clock_out_at' => 'Jam keluar harus lebih besar dari jam masuk.',
-                ]);
+                $this->addError('clock_out_at', 'Jam keluar harus lebih besar dari jam masuk.');
+                $this->halt();
             }
         }
-
-        return $data;
     }
 
     protected function afterSave(): void

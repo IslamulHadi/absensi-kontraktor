@@ -9,7 +9,6 @@ use App\Models\AttendanceSetting;
 use Carbon\Carbon;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 class CreateAttendance extends CreateRecord
 {
@@ -21,18 +20,22 @@ class CreateAttendance extends CreateRecord
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    protected function mutateFormDataBeforeCreate(array $data): array
+    protected function beforeCreate(): void
     {
+        $data = $this->form->getRawState();
+
         if (isset($data['clock_in_at'], $data['clock_out_at'])) {
             $clockIn = Carbon::parse($data['clock_in_at']);
             $clockOut = Carbon::parse($data['clock_out_at']);
             if ($clockOut <= $clockIn) {
-                throw ValidationException::withMessages([
-                    'clock_out_at' => 'Jam keluar harus lebih besar dari jam masuk.',
-                ]);
+                $this->addError('clock_out_at', 'Jam keluar harus lebih besar dari jam masuk.');
+                $this->halt();
             }
         }
+    }
 
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
         $setting = AttendanceSetting::current();
 
         if (blank($data['clock_in_on_time_at'] ?? null)) {
