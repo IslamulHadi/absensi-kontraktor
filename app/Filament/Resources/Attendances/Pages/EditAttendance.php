@@ -5,9 +5,11 @@ namespace App\Filament\Resources\Attendances\Pages;
 use App\Filament\Concerns\SyncsAttendanceFormPhotos;
 use App\Filament\Resources\Attendances\AttendanceResource;
 use App\Models\Attendance;
+use Carbon\Carbon;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class EditAttendance extends EditRecord
 {
@@ -31,6 +33,21 @@ class EditAttendance extends EditRecord
 
         $clockOut = $record->getFirstMedia(Attendance::MEDIA_CLOCK_OUT);
         $data['clock_out_photo'] = $clockOut?->getPathRelativeToRoot();
+
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        if (isset($data['clock_in_at'], $data['clock_out_at'])) {
+            $clockIn = Carbon::parse($data['clock_in_at']);
+            $clockOut = Carbon::parse($data['clock_out_at']);
+            if ($clockOut <= $clockIn) {
+                throw ValidationException::withMessages([
+                    'clock_out_at' => 'Jam keluar harus lebih besar dari jam masuk.',
+                ]);
+            }
+        }
 
         return $data;
     }
