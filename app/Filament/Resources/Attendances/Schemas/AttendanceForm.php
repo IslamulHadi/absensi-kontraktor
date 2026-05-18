@@ -122,8 +122,7 @@ class AttendanceForm
                             ->label('Lng keluar')
                             ->numeric(),
                     ])
-                    ->columns(2)
-                    ->collapsed(),
+                    ->columns(2),
                 Section::make('Toleransi keterlambatan')
                     ->description('Snapshot pengaturan saat absen masuk. Atur acuannya di '
                         .'menu Pengaturan → Toleransi Absen Masuk.')
