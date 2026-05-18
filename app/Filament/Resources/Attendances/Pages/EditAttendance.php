@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Attendances\Pages;
 use App\Filament\Concerns\SyncsAttendanceFormPhotos;
 use App\Filament\Resources\Attendances\AttendanceResource;
 use App\Models\Attendance;
-use Carbon\Carbon;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Str;
@@ -34,20 +33,6 @@ class EditAttendance extends EditRecord
         $data['clock_out_photo'] = $clockOut?->getPathRelativeToRoot();
 
         return $data;
-    }
-
-    protected function beforeSave(): void
-    {
-        $data = $this->form->getRawState();
-
-        if (isset($data['clock_in_at'], $data['clock_out_at'])) {
-            $clockIn = Carbon::parse($data['clock_in_at']);
-            $clockOut = Carbon::parse($data['clock_out_at']);
-            if ($clockOut <= $clockIn) {
-                $this->addError('clock_out_at', 'Jam keluar harus lebih besar dari jam masuk.');
-                $this->halt();
-            }
-        }
     }
 
     protected function afterSave(): void
