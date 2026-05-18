@@ -108,7 +108,8 @@ class AttendanceForm
                             ->seconds(false),
                         DateTimePicker::make('clock_out_at')
                             ->label('Jam keluar')
-                            ->seconds(false),
+                            ->seconds(false)
+                            ->after('clock_in_at'),
                         TextInput::make('clock_in_latitude')
                             ->label('Lat masuk')
                             ->numeric(),
