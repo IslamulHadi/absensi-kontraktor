@@ -109,7 +109,7 @@ class AttendanceForm
                         DateTimePicker::make('clock_out_at')
                             ->label('Jam keluar')
                             ->seconds(false)
-                            ->rule(function (\Filament\Forms\Get $get): \Closure {
+                            ->rule(function (\Filament\Schemas\Components\Utilities\Get $get): \Closure {
                                 return function (string $attribute, mixed $value, \Closure $fail) use ($get): void {
                                     $clockIn = $get('clock_in_at');
                                     if ($clockIn && $value && $value <= $clockIn) {
