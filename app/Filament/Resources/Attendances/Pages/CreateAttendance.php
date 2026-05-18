@@ -7,6 +7,7 @@ use App\Filament\Resources\Attendances\AttendanceResource;
 use App\Models\Attendance;
 use App\Models\AttendanceSetting;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Str;
 
 class CreateAttendance extends CreateRecord
 {
@@ -38,5 +39,14 @@ class CreateAttendance extends CreateRecord
         /** @var Attendance $record */
         $record = $this->getRecord();
         $this->syncAttendanceFormPhotos($record);
+
+        // Isi UUID biar keliatan dari mobile app
+        if ($record->client_clock_in_request_id === null) {
+            $record->client_clock_in_request_id = (string) Str::uuid();
+        }
+        if ($record->client_clock_out_request_id === null && $record->clock_out_at !== null) {
+            $record->client_clock_out_request_id = (string) Str::uuid();
+        }
+        $record->save();
     }
 }
