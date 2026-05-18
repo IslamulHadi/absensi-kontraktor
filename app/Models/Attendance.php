@@ -23,6 +23,15 @@ class Attendance extends Model implements HasMedia
 
     protected static function booted(): void
     {
+        static::saving(function (Attendance $attendance): void {
+            // Validasi: clock_out harus > clock_in
+            if ($attendance->clock_out_at !== null && $attendance->clock_in_at !== null) {
+                if ($attendance->clock_out_at->lessThanOrEqualTo($attendance->clock_in_at)) {
+                    $attendance->clock_out_at = null;
+                }
+            }
+        });
+
         static::saved(function (Attendance $attendance): void {
             $attendance->syncTimestampsFromClockTimes();
         });
