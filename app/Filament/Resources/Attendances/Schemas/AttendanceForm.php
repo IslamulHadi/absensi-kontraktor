@@ -142,7 +142,7 @@ class AttendanceForm
                             ->default(fn (): int => AttendanceSetting::current()->clock_in_tolerance_minutes),
                     ])
                     ->columns(2)
-                    ->collapsed(),
+                    ,
                 Section::make('Foto absensi')
                     ->schema([
                         FileUpload::make('clock_in_photo')
@@ -175,7 +175,7 @@ class AttendanceForm
                             ->saved(false),
                     ])
                     ->columns(2)
-                    ->collapsed(),
+                    ,
                 Textarea::make('notes')
                     ->label('Catatan')
                     ->columnSpanFull(),
