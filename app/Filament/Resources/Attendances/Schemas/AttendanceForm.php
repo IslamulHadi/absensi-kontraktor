@@ -13,8 +13,10 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Validation\Rules\Unique;
 
 class AttendanceForm
 {
@@ -91,7 +93,14 @@ class AttendanceForm
                         DatePicker::make('work_date')
                             ->label('Tanggal kerja')
                             ->required()
-                            ->native(false),
+                            ->native(false)
+                            ->unique(
+                                ignoreRecord: true,
+                                modifyRuleUsing: fn (Unique $rule, Get $get): Unique => $rule->where('employee_id', $get('employee_id')),
+                            )
+                            ->validationMessages([
+                                'unique' => 'Pegawai ini sudah punya catatan absensi di tanggal tersebut. Edit catatan yang ada.',
+                            ]),
                         Select::make('status')
                             ->label('Status')
                             ->options(collect(AttendanceDayStatus::cases())->mapWithKeys(
